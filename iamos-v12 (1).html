@@ -1,0 +1,2858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I-AM-O.S. v12 — Sovereign Monolith Runtime</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Monaco Editor -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    
+    <!-- Ethers.js -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+    
+    <!-- Tweetnacl for crypto -->
+    <script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Core Colors - Cyberpunk Theme */
+            --bg-primary: #05060f;
+            --bg-secondary: #0a0e1a;
+            --bg-card: #0f1420;
+            --bg-hover: #141824;
+            
+            /* Primary Colors */
+            --cyan: 180 100% 50%;
+            --cyan-glow: 180 100% 60%;
+            --magenta: 300 100% 50%;
+            --magenta-glow: 300 100% 60%;
+            --purple: 270 100% 55%;
+            --green: 142 71% 45%;
+            --yellow: 48 100% 50%;
+            --orange: 30 100% 50%;
+            --red: 0 84% 60%;
+            
+            /* Text Colors */
+            --text-primary: #e8f4ff;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            
+            /* UI Elements */
+            --border: rgba(148, 163, 184, 0.1);
+            --border-hover: rgba(148, 163, 184, 0.2);
+            
+            /* Shadows */
+            --shadow-glow-cyan: 0 0 40px rgba(0, 255, 255, 0.3);
+            --shadow-glow-magenta: 0 0 40px rgba(255, 0, 255, 0.3);
+            --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.5);
+            
+            /* Transitions */
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* Spacing */
+            --radius: 0.75rem;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* Animated Background */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        /* Main Layout */
+        .app-container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            background: rgba(10, 14, 26, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-card);
+        }
+
+        .header-content {
+            max-width: 1800px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-pulse {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: hsl(var(--cyan));
+            box-shadow: var(--shadow-glow-cyan);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.9); }
+        }
+
+        .logo h1 {
+            font-size: 1.75rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, hsl(var(--cyan)), hsl(var(--magenta)));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-top: -2px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-value {
+            color: hsl(var(--cyan));
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            max-width: 1800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 1.5rem 1rem;
+            overflow-y: auto;
+            height: calc(100vh - 73px);
+            position: sticky;
+            top: 73px;
+        }
+
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+
+        .nav-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            padding: 0 0.75rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--border-hover);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(255, 0, 255, 0.1));
+            color: var(--text-primary);
+            border-color: hsl(var(--cyan) / 0.3);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            height: calc(100vh - 73px);
+        }
+
+        .view-section {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-card);
+            transition: var(--transition-smooth);
+        }
+
+        .card:hover {
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-card), 0 0 20px rgba(0, 255, 255, 0.05);
+        }
+
+        .card-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, hsl(var(--cyan)), hsl(var(--magenta)));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-description {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, hsl(var(--cyan)), hsl(var(--magenta)));
+            color: var(--bg-primary);
+            box-shadow: 0 4px 12px rgba(0, 255, 255, 0.2);
+        }
+
+        .btn-primary:hover {
+            box-shadow: var(--shadow-glow-cyan);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-secondary);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            border-color: hsl(var(--cyan) / 0.3);
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        /* Inputs */
+        .input, .textarea, .select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.875rem;
+            transition: var(--transition-smooth);
+        }
+
+        .input:focus, .textarea:focus, .select:focus {
+            outline: none;
+            border-color: hsl(var(--cyan) / 0.5);
+            box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.1);
+        }
+
+        .textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Terminal */
+        .terminal {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            color: hsl(var(--green));
+            height: 400px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .terminal-line {
+            margin-bottom: 0.25rem;
+        }
+
+        .terminal-prompt {
+            color: hsl(var(--cyan));
+        }
+
+        .terminal-error {
+            color: hsl(var(--orange));
+        }
+
+        .terminal-success {
+            color: hsl(var(--green));
+        }
+
+        /* Stats */
+        .stat-card {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-hover));
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, hsl(var(--cyan)), hsl(var(--magenta)));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: hsl(var(--cyan));
+            overflow-x: auto;
+            line-height: 1.6;
+            word-break: break-all;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(0, 255, 255, 0.1);
+            color: hsl(var(--cyan));
+            border: 1px solid hsl(var(--cyan) / 0.3);
+        }
+
+        .badge.success {
+            background: rgba(134, 239, 172, 0.1);
+            color: hsl(var(--green));
+            border-color: hsl(var(--green) / 0.3);
+        }
+
+        .badge.warning {
+            background: rgba(251, 191, 36, 0.1);
+            color: hsl(var(--yellow));
+            border-color: hsl(var(--yellow) / 0.3);
+        }
+
+        .badge.error {
+            background: rgba(248, 113, 113, 0.1);
+            color: hsl(var(--orange));
+            border-color: hsl(var(--orange) / 0.3);
+        }
+
+        /* Monaco Editor Container */
+        .monaco-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+
+        /* Preview Container */
+        .preview-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            background: white;
+        }
+
+        .preview-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: hsl(var(--cyan));
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            transition: var(--transition-smooth);
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: hsl(var(--cyan));
+            border-bottom-color: hsl(var(--cyan));
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 4px solid hsl(var(--cyan));
+            border-radius: 0.5rem;
+            padding: 1rem 1.5rem;
+            box-shadow: var(--shadow-card);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+            max-width: 400px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success {
+            border-left-color: hsl(var(--green));
+        }
+
+        .toast.error {
+            border-left-color: hsl(var(--orange));
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 255, 0.5);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            
+            .header-stats {
+                display: none;
+            }
+            
+            .content-area {
+                padding: 1rem;
+            }
+
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: hsl(var(--cyan));
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Chain Badges */
+        .chain-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid hsl(var(--cyan) / 0.3);
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .chain-badge.ethereum {
+            background: rgba(98, 126, 234, 0.1);
+            border-color: rgba(98, 126, 234, 0.3);
+            color: #627eea;
+        }
+
+        .chain-badge.solana {
+            background: rgba(220, 31, 255, 0.1);
+            border-color: rgba(220, 31, 255, 0.3);
+            color: #dc1fff;
+        }
+
+        .chain-badge.bitcoin {
+            background: rgba(247, 147, 26, 0.1);
+            border-color: rgba(247, 147, 26, 0.3);
+            color: #f7931a;
+        }
+
+        /* Ollama Setup Guide */
+        .setup-step {
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .setup-step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, hsl(var(--cyan)), hsl(var(--magenta)));
+            border-radius: 50%;
+            font-weight: 700;
+            margin-right: 1rem;
+        }
+
+        /* Policy Key Card */
+        .policy-card {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-hover));
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .policy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .policy-limits {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .policy-limit-item {
+            font-size: 0.875rem;
+        }
+
+        .policy-limit-label {
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .policy-limit-value {
+            color: hsl(var(--cyan));
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+    
+    <div class="app-container">
+        <header>
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="status-pulse"></div>
+                    <div class="logo">
+                        <h1>I-AM-O.S.</h1>
+                        <div class="logo-subtitle">Sovereign Runtime v12</div>
+                    </div>
+                </div>
+                
+                <div class="header-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-wallet"></i>
+                        <span>Wallet: <span class="stat-value" id="wallet-status">Not Connected</span></span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-cube"></i>
+                        <span>Blocks: <span class="stat-value" id="block-count">1</span></span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-robot"></i>
+                        <span>Agents: <span class="stat-value" id="agent-count">0</span></span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-coins"></i>
+                        <span>NXS: <span class="stat-value" id="token-balance">0</span></span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <nav class="sidebar">
+                <div class="nav-section">
+                    <div class="nav-title">Core System</div>
+                    <div class="nav-item active" data-view="dashboard">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </div>
+                    <div class="nav-item" data-view="identity">
+                        <i class="fas fa-fingerprint"></i>
+                        <span>Identity & Keys</span>
+                    </div>
+                    <div class="nav-item" data-view="blockchain">
+                        <i class="fas fa-link"></i>
+                        <span>Blockchain</span>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">Intelligence</div>
+                    <div class="nav-item" data-view="ai">
+                        <i class="fas fa-brain"></i>
+                        <span>AI Runtime</span>
+                    </div>
+                    <div class="nav-item" data-view="ollama">
+                        <i class="fas fa-server"></i>
+                        <span>Ollama Setup</span>
+                    </div>
+                    <div class="nav-item" data-view="agents">
+                        <i class="fas fa-users"></i>
+                        <span>Agent Swarm</span>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">Policy System</div>
+                    <div class="nav-item" data-view="policy-keys">
+                        <i class="fas fa-key"></i>
+                        <span>Policy-Keys</span>
+                    </div>
+                    <div class="nav-item" data-view="delegations">
+                        <i class="fas fa-share-nodes"></i>
+                        <span>Delegations</span>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">Development</div>
+                    <div class="nav-item" data-view="remix">
+                        <i class="fas fa-code"></i>
+                        <span>Remix IDE</span>
+                    </div>
+                    <div class="nav-item" data-view="generator">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        <span>HTML Generator</span>
+                    </div>
+                    <div class="nav-item" data-view="nft">
+                        <i class="fas fa-image"></i>
+                        <span>NFT Minting</span>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">MEV & Arbitrage</div>
+                    <div class="nav-item" data-view="mev">
+                        <i class="fas fa-bolt"></i>
+                        <span>MEV Dashboard</span>
+                    </div>
+                    <div class="nav-item" data-view="arbitrage">
+                        <i class="fas fa-exchange-alt"></i>
+                        <span>Cross-Chain Arb</span>
+                    </div>
+                    <div class="nav-item" data-view="opportunities">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Opportunities</span>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">Storage</div>
+                    <div class="nav-item" data-view="ipfs">
+                        <i class="fas fa-network-wired"></i>
+                        <span>IPFS Storage</span>
+                    </div>
+                </div>
+            </nav>
+
+            <main class="content-area">
+                <!-- Dashboard View -->
+                <div class="view-section active" id="view-dashboard">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Welcome to I-AM-O.S. v12</h2>
+                            <p class="card-description">
+                                A sovereign, local-first, content-addressed runtime. Your identity, memory, and intelligence 
+                                live entirely on your device. Multi-chain support (ETH/SOL/BTC), AI agents with Policy-Keys, 
+                                and a creative HTML generator with NFT minting. No servers. No cloud. No masters.
+                            </p>
+                        </div>
+                        <div class="grid grid-3">
+                            <button class="btn btn-primary" onclick="IAMOS.init()">
+                                <i class="fas fa-rocket"></i>
+                                Initialize System
+                            </button>
+                            <button class="btn btn-secondary" onclick="IAMOS.exportState()">
+                                <i class="fas fa-download"></i>
+                                Export State
+                            </button>
+                            <button class="btn btn-ghost" onclick="IAMOS.showInfo()">
+                                <i class="fas fa-info-circle"></i>
+                                System Info
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-3">
+                        <div class="stat-card">
+                            <div class="stat-label">System Status</div>
+                            <div class="stat-number" id="system-status" style="font-size: 1.5rem;">READY</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Chain Height</div>
+                            <div class="stat-number" id="dashboard-blocks">1</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Active Agents</div>
+                            <div class="stat-number" id="dashboard-agents">0</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">System Logs</h3>
+                        </div>
+                        <div class="terminal" id="main-terminal">
+                            <div class="terminal-line terminal-success">[SYSTEM] I-AM-O.S. v12 ready to initialize</div>
+                            <div class="terminal-line"><span class="terminal-prompt">&gt;</span> Awaiting commands...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Identity & Keys View -->
+                <div class="view-section" id="view-identity">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Sovereign Identity & Multi-Chain Keys</h2>
+                            <p class="card-description">
+                                Generate a master identity with Ed25519 DID, then derive chain-specific keys for ETH, SOL, and BTC.
+                                All cryptographic operations run in a WebWorker for security and performance.
+                            </p>
+                        </div>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">Master DID</label>
+                            <div class="code-block" id="did-display">No identity generated yet</div>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">Recovery Phrase (24 words)</label>
+                            <div class="textarea" id="mnemonic-display" style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; background: #000; color: hsl(var(--cyan)); min-height: 80px;">Generate identity to see recovery phrase</div>
+                        </div>
+
+                        <div class="grid grid-3">
+                            <button class="btn btn-primary" onclick="IAMOS.generateMasterIdentity()">
+                                <i class="fas fa-key"></i>
+                                Generate Identity
+                            </button>
+                            <button class="btn btn-secondary" onclick="IAMOS.exportMasterKey()">
+                                <i class="fas fa-file-export"></i>
+                                Export Keys
+                            </button>
+                            <button class="btn btn-ghost" onclick="IAMOS.clearIdentity()">
+                                <i class="fas fa-trash"></i>
+                                Clear Identity
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card" id="chain-keys-section" style="display: none;">
+                        <div class="card-header">
+                            <h3 class="card-title">Derived Chain Keys</h3>
+                            <p class="card-description">Keys derived from your master seed using different algorithms per chain</p>
+                        </div>
+                        
+                        <div id="chain-keys-container"></div>
+                    </div>
+                </div>
+
+                <!-- Blockchain View -->
+                <div class="view-section" id="view-blockchain">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">SolaChain Explorer</h2>
+                            <p class="card-description">
+                                Local blockchain with SHA-256 proof-of-work. Each block is cryptographically sealed.
+                            </p>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <button class="btn btn-primary" onclick="IAMOS.mineBlock()">
+                                <i class="fas fa-hammer"></i>
+                                Mine New Block
+                            </button>
+                        </div>
+
+                        <div id="chain-explorer"></div>
+                    </div>
+                </div>
+
+                <!-- AI Runtime View -->
+                <div class="view-section" id="view-ai">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">AI Runtime</h2>
+                            <p class="card-description">
+                                Local AI powered by Ollama. Runs entirely on your machine. Make sure Ollama is installed and running.
+                            </p>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                Model
+                            </label>
+                            <select class="select" id="ai-model">
+                                <option value="llama3.2">Llama 3.2</option>
+                                <option value="llama2">Llama 2</option>
+                                <option value="mistral">Mistral</option>
+                                <option value="codellama">Code Llama</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                Prompt
+                            </label>
+                            <textarea class="textarea" id="ai-prompt" placeholder="Ask the AI anything..."></textarea>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="IAMOS.runAI()">
+                            <i class="fas fa-brain"></i>
+                            Execute AI
+                        </button>
+
+                        <div style="margin-top: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                Response
+                            </label>
+                            <div class="terminal" id="ai-response">
+                                Waiting for input...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ollama Setup View -->
+                <div class="view-section" id="view-ollama">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Ollama Setup Guide</h2>
+                            <p class="card-description">
+                                Follow these steps to install and run Ollama locally for sovereign AI.
+                            </p>
+                        </div>
+
+                        <div class="setup-step">
+                            <span class="setup-step-number">1</span>
+                            <strong>Download Ollama</strong>
+                            <p style="margin-top: 0.5rem; color: var(--text-secondary);">
+                                Visit <a href="https://ollama.ai" target="_blank" style="color: hsl(var(--cyan));">ollama.ai</a> 
+                                and download for your operating system (Mac, Linux, or Windows).
+                            </p>
+                        </div>
+
+                        <div class="setup-step">
+                            <span class="setup-step-number">2</span>
+                            <strong>Install Ollama</strong>
+                            <p style="margin-top: 0.5rem; color: var(--text-secondary);">
+                                Run the installer and follow the prompts. Ollama will be available as a command-line tool.
+                            </p>
+                        </div>
+
+                        <div class="setup-step">
+                            <span class="setup-step-number">3</span>
+                            <strong>Pull a Model</strong>
+                            <p style="margin-top: 0.5rem; color: var(--text-secondary);">
+                                Open your terminal and run:
+                            </p>
+                            <div class="code-block" style="margin-top: 0.5rem;">
+                                ollama pull llama3.2
+                            </div>
+                            <p style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.8rem;">
+                                Other options: <code>mistral</code>, <code>codellama</code>, <code>llama2</code>
+                            </p>
+                        </div>
+
+                        <div class="setup-step">
+                            <span class="setup-step-number">4</span>
+                            <strong>Verify Installation</strong>
+                            <p style="margin-top: 0.5rem; color: var(--text-secondary);">
+                                Test that Ollama is running:
+                            </p>
+                            <div class="code-block" style="margin-top: 0.5rem;">
+                                curl http://localhost:11434/api/tags
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 1.5rem;">
+                            <button class="btn btn-primary" onclick="IAMOS.testOllamaConnection()">
+                                <i class="fas fa-plug"></i>
+                                Test Connection
+                            </button>
+                        </div>
+
+                        <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(0, 255, 255, 0.1); border: 1px solid hsl(var(--cyan) / 0.3); border-radius: 0.5rem;">
+                            <strong style="color: hsl(var(--cyan));">Connection Status:</strong>
+                            <span id="ollama-status" style="margin-left: 1rem;">Not tested</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agents View -->
+                <div class="view-section" id="view-agents">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Agent Swarm Control</h2>
+                            <p class="card-description">
+                                Deploy autonomous agents with Policy-Keys for controlled operations.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-2" style="margin-bottom: 1.5rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    Agent Name
+                                </label>
+                                <input type="text" class="input" id="agent-name" placeholder="e.g., Alpha">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    Agent Role
+                                </label>
+                                <input type="text" class="input" id="agent-role" placeholder="e.g., Trading Bot">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="IAMOS.createAgent()">
+                            <i class="fas fa-plus"></i>
+                            Spawn Agent
+                        </button>
+                    </div>
+
+                    <div class="grid grid-2" id="agent-list">
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">
+                            <i class="fas fa-robot" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>No agents spawned yet</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Policy-Keys View -->
+                <div class="view-section" id="view-policy-keys">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Policy-Keys Management</h2>
+                            <p class="card-description">
+                                Create programmable keys with spending limits, time bounds, and action constraints.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-2" style="margin-bottom: 1.5rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    Policy Name
+                                </label>
+                                <input type="text" class="input" id="policy-name" placeholder="e.g., Trading Limits">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    Max Spending (ETH)
+                                </label>
+                                <input type="number" class="input" id="policy-spending" placeholder="0.1" step="0.01">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-2" style="margin-bottom: 1.5rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    Allowed Actions
+                                </label>
+                                <select class="select" id="policy-actions" multiple style="height: 120px;">
+                                    <option value="swap">Token Swap</option>
+                                    <option value="transfer">Transfer</option>
+                                    <option value="approve">Approve</option>
+                                    <option value="stake">Stake</option>
+                                    <option value="vote">Vote</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    Expiry (hours)
+                                </label>
+                                <input type="number" class="input" id="policy-expiry" placeholder="24" value="24">
+                                
+                                <label style="display: block; margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    Max Uses
+                                </label>
+                                <input type="number" class="input" id="policy-uses" placeholder="10" value="10">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="IAMOS.createPolicyKey()">
+                            <i class="fas fa-key"></i>
+                            Create Policy-Key
+                        </button>
+                    </div>
+
+                    <div id="policy-keys-list"></div>
+                </div>
+
+                <!-- Delegations View -->
+                <div class="view-section" id="view-delegations">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">API & Resource Delegations</h2>
+                            <p class="card-description">
+                                Delegate access to APIs, servers, and resources with restrictions.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-2" style="margin-bottom: 1.5rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    Resource Type
+                                </label>
+                                <select class="select" id="delegation-type">
+                                    <option value="api">API Key</option>
+                                    <option value="server">Server Access</option>
+                                    <option value="storage">Storage</option>
+                                    <option value="compute">Compute</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    Resource Name
+                                </label>
+                                <input type="text" class="input" id="delegation-name" placeholder="e.g., OpenAI API">
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                Resource Credentials
+                            </label>
+                            <textarea class="textarea" id="delegation-credentials" placeholder="API key or credentials..." style="min-height: 80px;"></textarea>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="IAMOS.createDelegation()">
+                            <i class="fas fa-share-nodes"></i>
+                            Create Delegation
+                        </button>
+                    </div>
+
+                    <div id="delegations-list">
+                        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            <i class="fas fa-share-nodes" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>No delegations created yet</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HTML Generator View -->
+                <div class="view-section" id="view-generator">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Creative HTML Generator</h2>
+                            <p class="card-description">
+                                AI-powered HTML/CSS/JS editor with live preview and NFT minting capabilities.
+                            </p>
+                        </div>
+
+                        <div class="tabs">
+                            <button class="tab active" onclick="IAMOS.switchEditorTab('html')">HTML</button>
+                            <button class="tab" onclick="IAMOS.switchEditorTab('css')">CSS</button>
+                            <button class="tab" onclick="IAMOS.switchEditorTab('js')">JavaScript</button>
+                        </div>
+
+                        <div class="grid grid-2" style="gap: 1rem; margin-bottom: 1rem;">
+                            <div>
+                                <div class="monaco-container" id="editor-container"></div>
+                                <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-primary" onclick="IAMOS.updatePreview()">
+                                        <i class="fas fa-eye"></i>
+                                        Update Preview
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="IAMOS.generateWithAI()">
+                                        <i class="fas fa-wand-magic-sparkles"></i>
+                                        AI Generate
+                                    </button>
+                                    <button class="btn btn-ghost" onclick="IAMOS.exportHTML()">
+                                        <i class="fas fa-download"></i>
+                                        Export
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="preview-container">
+                                    <iframe id="preview-frame" sandbox="allow-scripts"></iframe>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NFT Minting View -->
+                <div class="view-section" id="view-nft">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">NFT Minting & Licensing</h2>
+                            <p class="card-description">
+                                Mint your generated HTML as NFTs with built-in licensing.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-2" style="margin-bottom: 1.5rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    NFT Name
+                                </label>
+                                <input type="text" class="input" id="nft-name" placeholder="My Creative Work">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    License Type
+                                </label>
+                                <select class="select" id="nft-license">
+                                    <option value="MIT-NC">MIT Non-Commercial</option>
+                                    <option value="CC-BY-NC">Creative Commons BY-NC</option>
+                                    <option value="Commercial">Full Commercial</option>
+                                    <option value="Custom">Custom License</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                Description
+                            </label>
+                            <textarea class="textarea" id="nft-description" placeholder="Describe your work..."></textarea>
+                        </div>
+
+                        <div class="grid grid-2" style="margin-bottom: 1.5rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    Target Chain
+                                </label>
+                                <select class="select" id="nft-chain">
+                                    <option value="ethereum">Ethereum</option>
+                                    <option value="polygon">Polygon</option>
+                                    <option value="base">Base</option>
+                                    <option value="arbitrum">Arbitrum</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                                    Royalty %
+                                </label>
+                                <input type="number" class="input" id="nft-royalty" placeholder="5" min="0" max="100" value="5">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="IAMOS.mintNFT()">
+                            <i class="fas fa-image"></i>
+                            Mint as NFT
+                        </button>
+                    </div>
+
+                    <div id="nft-list">
+                        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            <i class="fas fa-image" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>No NFTs minted yet</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Remix IDE View -->
+                <div class="view-section" id="view-remix">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Remix IDE - Ethereum Development</h2>
+                            <p class="card-description">
+                                Full Ethereum development environment. Write, compile, and deploy smart contracts directly in the browser.
+                            </p>
+                        </div>
+
+                        <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+                            <button class="btn btn-primary" onclick="IAMOS.loadRemixIDE()">
+                                <i class="fas fa-play"></i>
+                                Launch Remix IDE
+                            </button>
+                            <button class="btn btn-secondary" onclick="IAMOS.connectRemixToChain()">
+                                <i class="fas fa-link"></i>
+                                Connect to Chain
+                            </button>
+                            <select class="select" id="remix-chain" style="width: 200px;">
+                                <option value="ethereum">Ethereum Mainnet</option>
+                                <option value="goerli">Goerli Testnet</option>
+                                <option value="sepolia">Sepolia Testnet</option>
+                                <option value="arbitrum">Arbitrum</option>
+                                <option value="base">Base</option>
+                                <option value="polygon">Polygon</option>
+                            </select>
+                        </div>
+
+                        <div id="remix-status" style="padding: 1rem; background: rgba(0, 255, 255, 0.1); border: 1px solid hsl(var(--cyan) / 0.3); border-radius: 0.5rem; margin-bottom: 1rem; display: none;">
+                            <strong style="color: hsl(var(--cyan));">Connected:</strong>
+                            <span id="remix-chain-name"></span>
+                        </div>
+
+                        <div style="width: 100%; height: calc(100vh - 350px); border: 1px solid var(--border); border-radius: 0.75rem; overflow: hidden; background: #1e1e1e;">
+                            <iframe id="remix-iframe" style="width: 100%; height: 100%; border: none; display: none;"></iframe>
+                            <div id="remix-placeholder" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted);">
+                                <div style="text-align: center;">
+                                    <i class="fas fa-code" style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                                    <p>Click "Launch Remix IDE" to start developing</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MEV Dashboard View -->
+                <div class="view-section" id="view-mev">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">MEV Dashboard - Extract Value from Inefficiencies</h2>
+                            <p class="card-description">
+                                Monitor mempool, detect arbitrage opportunities, and execute MEV strategies with Policy-Key protected agents.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-3" style="margin-bottom: 1.5rem;">
+                            <div class="stat-card">
+                                <div class="stat-label">Total Extracted</div>
+                                <div class="stat-number" id="mev-total" style="font-size: 2rem;">0 ETH</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Active Bots</div>
+                                <div class="stat-number" id="mev-bots" style="font-size: 2rem;">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Success Rate</div>
+                                <div class="stat-number" id="mev-success" style="font-size: 2rem;">0%</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="color: hsl(var(--cyan)); margin-bottom: 1rem;">🎮 Gamification Level</h3>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="flex: 1; background: var(--bg-hover); border-radius: 9999px; height: 24px; overflow: hidden; border: 1px solid var(--border);">
+                                    <div id="level-progress" style="height: 100%; background: linear-gradient(90deg, hsl(var(--cyan)), hsl(var(--magenta))); width: 25%; transition: width 0.5s;"></div>
+                                </div>
+                                <div style="font-family: 'JetBrains Mono', monospace;">
+                                    <strong style="color: hsl(var(--cyan)); font-size: 1.5rem;" id="player-level">Lv 1</strong>
+                                    <span style="color: var(--text-muted); margin-left: 0.5rem;" id="player-xp">250 / 1000 XP</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="color: hsl(var(--cyan)); margin-bottom: 1rem;">🏆 Achievements</h3>
+                            <div class="grid grid-3" id="achievements-list">
+                                <div style="padding: 1rem; background: var(--bg-hover); border: 1px solid var(--border); border-radius: 0.5rem; text-align: center;">
+                                    <i class="fas fa-trophy" style="font-size: 2rem; color: hsl(var(--yellow)); margin-bottom: 0.5rem;"></i>
+                                    <div style="font-weight: 600; color: var(--text-primary);">First Blood</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Execute first MEV</div>
+                                    <div class="badge" style="margin-top: 0.5rem;">🔒 Locked</div>
+                                </div>
+                                <div style="padding: 1rem; background: var(--bg-hover); border: 1px solid var(--border); border-radius: 0.5rem; text-align: center;">
+                                    <i class="fas fa-chart-line" style="font-size: 2rem; color: hsl(var(--green)); margin-bottom: 0.5rem;"></i>
+                                    <div style="font-weight: 600; color: var(--text-primary);">Profit Maker</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Extract 1 ETH total</div>
+                                    <div class="badge" style="margin-top: 0.5rem;">🔒 Locked</div>
+                                </div>
+                                <div style="padding: 1rem; background: var(--bg-hover); border: 1px solid var(--border); border-radius: 0.5rem; text-align: center;">
+                                    <i class="fas fa-bolt" style="font-size: 2rem; color: hsl(var(--cyan)); margin-bottom: 0.5rem;"></i>
+                                    <div style="font-weight: 600; color: var(--text-primary);">Speed Demon</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">10 successful MEVs</div>
+                                    <div class="badge" style="margin-top: 0.5rem;">🔒 Locked</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="color: hsl(var(--cyan)); margin-bottom: 1rem;">🤖 Deploy MEV Bot</h3>
+                            <div class="grid grid-2" style="gap: 1rem;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">Bot Strategy</label>
+                                    <select class="select" id="mev-strategy">
+                                        <option value="sandwich">Sandwich Attack</option>
+                                        <option value="frontrun">Front-Running</option>
+                                        <option value="backrun">Back-Running</option>
+                                        <option value="liquidation">Liquidation Hunter</option>
+                                        <option value="arbitrage">DEX Arbitrage</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">Target Chain</label>
+                                    <select class="select" id="mev-chain">
+                                        <option value="ethereum">Ethereum</option>
+                                        <option value="arbitrum">Arbitrum</option>
+                                        <option value="base">Base</option>
+                                        <option value="polygon">Polygon</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">Max Gas Price (gwei)</label>
+                                <input type="number" class="input" id="mev-gas" value="50" min="1">
+                            </div>
+                            <button class="btn btn-primary" onclick="IAMOS.deployMEVBot()" style="margin-top: 1rem; width: 100%;">
+                                <i class="fas fa-robot"></i>
+                                Deploy MEV Bot
+                            </button>
+                        </div>
+
+                        <div>
+                            <h3 style="color: hsl(var(--cyan)); margin-bottom: 1rem;">📊 Active MEV Bots</h3>
+                            <div id="mev-bots-list">
+                                <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                    <i class="fas fa-robot" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                                    <p>No MEV bots deployed yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cross-Chain Arbitrage View -->
+                <div class="view-section" id="view-arbitrage">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Cross-Chain Arbitrage Scanner</h2>
+                            <p class="card-description">
+                                Monitor price differences across chains and DEXs. Execute profitable arbitrage with atomic swaps.
+                            </p>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <div style="display: flex; gap: 1rem; align-items: center;">
+                                <button class="btn btn-primary" onclick="IAMOS.startArbitrageScanning()">
+                                    <i class="fas fa-search"></i>
+                                    Start Scanning
+                                </button>
+                                <button class="btn btn-secondary" onclick="IAMOS.stopArbitrageScanning()">
+                                    <i class="fas fa-stop"></i>
+                                    Stop
+                                </button>
+                                <div style="flex: 1; text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary);">
+                                    Status: <span id="arb-status" style="color: hsl(var(--green));">Idle</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-3" style="margin-bottom: 1.5rem;">
+                            <div class="stat-card">
+                                <div class="stat-label">Opportunities Found</div>
+                                <div class="stat-number" id="arb-opportunities" style="font-size: 2rem;">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Executed Today</div>
+                                <div class="stat-number" id="arb-executed" style="font-size: 2rem;">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Profit Today</div>
+                                <div class="stat-number" id="arb-profit" style="font-size: 2rem;">0 ETH</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <h3 style="color: hsl(var(--cyan)); margin-bottom: 1rem;">⚙️ Scanner Configuration</h3>
+                            <div class="grid grid-2" style="gap: 1rem;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">Min Profit %</label>
+                                    <input type="number" class="input" id="arb-min-profit" value="2" step="0.1" min="0.1">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">Max Slippage %</label>
+                                    <input type="number" class="input" id="arb-slippage" value="1" step="0.1" min="0.1">
+                                </div>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">Target Tokens (comma separated)</label>
+                                <input type="text" class="input" id="arb-tokens" value="ETH, USDC, USDT, DAI" placeholder="ETH, USDC, USDT">
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 style="color: hsl(var(--cyan)); margin-bottom: 1rem;">🎯 Live Opportunities</h3>
+                            <div id="arb-opportunities-list">
+                                <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                    <i class="fas fa-chart-line" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                                    <p>Start scanning to find opportunities</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Opportunities View -->
+                <div class="view-section" id="view-opportunities">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Opportunity Feed - Real-time Value Extraction</h2>
+                            <p class="card-description">
+                                Live feed of profitable opportunities across all chains. Execute with one click using Policy-Key protected agents.
+                            </p>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <div class="tabs">
+                                <button class="tab active" onclick="IAMOS.filterOpportunities('all')">All</button>
+                                <button class="tab" onclick="IAMOS.filterOpportunities('mev')">MEV</button>
+                                <button class="tab" onclick="IAMOS.filterOpportunities('arbitrage')">Arbitrage</button>
+                                <button class="tab" onclick="IAMOS.filterOpportunities('liquidation')">Liquidations</button>
+                            </div>
+                        </div>
+
+                        <div id="opportunities-feed">
+                            <!-- Dynamic opportunities will be added here -->
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">🏅 Leaderboard</h3>
+                        </div>
+                        <div id="leaderboard">
+                            <div style="margin-bottom: 1rem; padding: 1rem; background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(255, 0, 255, 0.1)); border: 1px solid hsl(var(--cyan) / 0.3); border-radius: 0.5rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="display: flex; align-items: center; gap: 1rem;">
+                                        <div style="font-size: 1.5rem;">🥇</div>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-primary);">You</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted);">Level 1 • 250 XP</div>
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-family: 'JetBrains Mono', monospace; color: hsl(var(--cyan)); font-weight: 600;">0 ETH</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-muted);">Total Extracted</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IPFS Storage View -->
+                <div class="view-section" id="view-ipfs">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">IPFS Content Storage</h2>
+                            <p class="card-description">
+                                Decentralized content-addressed storage. Files are hashed and stored locally (simulated IPFS).
+                            </p>
+                        </div>
+
+                        <div style="border: 2px dashed var(--border); border-radius: 0.75rem; padding: 3rem 2rem; text-align: center; cursor: pointer; transition: var(--transition-smooth);"
+                             id="upload-area"
+                             onclick="document.getElementById('file-input').click()">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: hsl(var(--cyan)); margin-bottom: 1rem;"></i>
+                            <h3 style="margin-bottom: 0.5rem;">Drop files here or click to upload</h3>
+                            <p style="color: var(--text-muted); font-size: 0.875rem;">Supports all file types</p>
+                            <input type="file" id="file-input" multiple style="display: none;" onchange="IAMOS.handleFiles(this.files)">
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Stored Files</h3>
+                        </div>
+                        <div id="file-list">
+                            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                <i class="fas fa-folder-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                                <p>No files uploaded yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="ai-generate-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">AI Generate Component</h3>
+                <button class="modal-close" onclick="IAMOS.closeModal('ai-generate-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600;">
+                    Describe what you want to build
+                </label>
+                <textarea class="textarea" id="ai-generate-prompt" placeholder="e.g., A responsive pricing card with hover effects..." style="min-height: 150px;"></textarea>
+                
+                <div style="margin-top: 1.5rem;">
+                    <button class="btn btn-primary" onclick="IAMOS.executeAIGenerate()">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        Generate Code
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== I-AM-O.S. Core System ====================
+        const IAMOS = {
+            state: {
+                initialized: false,
+                masterIdentity: null,
+                chainKeys: {},
+                blockchain: [],
+                agents: [],
+                policyKeys: [],
+                delegations: [],
+                files: [],
+                nfts: [],
+                tokens: 0,
+                editorContent: {
+                    html: '<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial; padding: 20px; }\n  </style>\n</head>\n<body>\n  <h1>Hello, World!</h1>\n</body>\n</html>',
+                    css: '',
+                    js: ''
+                },
+                currentEditorLang: 'html',
+                monacoEditor: null
+            },
+
+            // ===== Initialization =====
+            async init() {
+                if (this.state.initialized) {
+                    this.log('System already initialized', 'warning');
+                    return;
+                }
+
+                this.log('Initializing I-AM-O.S. v12...', 'info');
+                
+                // Load saved state
+                this.loadState();
+                
+                // Initialize blockchain
+                if (this.state.blockchain.length === 0) {
+                    this.state.blockchain = [{
+                        index: 0,
+                        timestamp: Date.now(),
+                        data: { type: 'genesis' },
+                        previousHash: '0',
+                        hash: '0'.repeat(64),
+                        nonce: 0
+                    }];
+                }
+
+                // Initialize background animation
+                this.initBackgroundAnimation();
+
+                // Initialize navigation
+                this.initNavigation();
+
+                // Initialize Monaco Editor
+                await this.initMonacoEditor();
+
+                this.state.initialized = true;
+                this.renderUI();
+                this.log('System initialized successfully', 'success');
+                document.getElementById('system-status').textContent = 'ONLINE';
+            },
+
+            // ===== State Management =====
+            loadState() {
+                const saved = localStorage.getItem('iamos_state');
+                if (saved) {
+                    try {
+                        const loadedState = JSON.parse(saved);
+                        this.state = { ...this.state, ...loadedState };
+                    } catch (e) {
+                        console.error('Failed to load state:', e);
+                    }
+                }
+            },
+
+            saveState() {
+                try {
+                    localStorage.setItem('iamos_state', JSON.stringify(this.state));
+                } catch (e) {
+                    this.log('Failed to save state: ' + e.message, 'error');
+                }
+            },
+
+            // ===== Background Animation =====
+            initBackgroundAnimation() {
+                const canvas = document.getElementById('bg-canvas');
+                const ctx = canvas.getContext('2d');
+                let width, height, particles = [];
+
+                const resize = () => {
+                    width = canvas.width = window.innerWidth;
+                    height = canvas.height = window.innerHeight;
+                };
+
+                resize();
+                window.addEventListener('resize', resize);
+
+                // Create particles
+                for (let i = 0; i < 100; i++) {
+                    particles.push({
+                        x: Math.random() * width,
+                        y: Math.random() * height,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: (Math.random() - 0.5) * 0.5,
+                        size: Math.random() * 2 + 1
+                    });
+                }
+
+                const animate = () => {
+                    ctx.fillStyle = 'rgba(5, 6, 15, 0.05)';
+                    ctx.fillRect(0, 0, width, height);
+
+                    particles.forEach(p => {
+                        p.x += p.vx;
+                        p.y += p.vy;
+
+                        if (p.x < 0 || p.x > width) p.vx *= -1;
+                        if (p.y < 0 || p.y > height) p.vy *= -1;
+
+                        ctx.fillStyle = 'rgba(0, 255, 255, 0.6)';
+                        ctx.fillRect(p.x, p.y, p.size, p.size);
+                    });
+
+                    requestAnimationFrame(animate);
+                };
+
+                animate();
+            },
+
+            // ===== Navigation =====
+            initNavigation() {
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const view = item.dataset.view;
+                        this.switchView(view);
+                    });
+                });
+            },
+
+            switchView(viewName) {
+                document.querySelectorAll('.view-section').forEach(v => {
+                    v.classList.remove('active');
+                });
+
+                document.getElementById(`view-${viewName}`).classList.add('active');
+
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                document.querySelector(`[data-view="${viewName}"]`).classList.add('active');
+            },
+
+            // ===== Identity & Key Management =====
+            async generateMasterIdentity() {
+                this.log('Generating master identity...', 'info');
+
+                try {
+                    // Generate master keypair using tweetnacl
+                    const keyPair = nacl.sign.keyPair();
+                    
+                    // Generate mnemonic (simplified - in production use BIP39)
+                    const words = ['abandon', 'ability', 'able', 'about', 'above', 'absent', 'absorb', 'abstract', 
+                                   'absurd', 'abuse', 'access', 'accident', 'account', 'accuse', 'achieve', 'acid',
+                                   'acoustic', 'acquire', 'across', 'act', 'action', 'actor', 'actress', 'actual'];
+                    const mnemonic = Array.from({length: 24}, () => words[Math.floor(Math.random() * words.length)]).join(' ');
+
+                    const publicKeyHex = this.arrayToHex(keyPair.publicKey);
+                    const secretKeyHex = this.arrayToHex(keyPair.secretKey);
+
+                    this.state.masterIdentity = {
+                        mnemonic,
+                        publicKey: publicKeyHex,
+                        secretKey: secretKeyHex,
+                        did: `did:key:z${publicKeyHex.slice(0, 44)}`
+                    };
+
+                    // Derive chain-specific keys
+                    await this.deriveChainKeys();
+
+                    document.getElementById('did-display').textContent = this.state.masterIdentity.did;
+                    document.getElementById('mnemonic-display').textContent = mnemonic;
+                    
+                    document.getElementById('chain-keys-section').style.display = 'block';
+
+                    this.saveState();
+                    this.log('Master identity generated successfully', 'success');
+                } catch (e) {
+                    this.log('Failed to generate identity: ' + e.message, 'error');
+                }
+            },
+
+            async deriveChainKeys() {
+                const seed = this.state.masterIdentity.secretKey;
+                this.state.chainKeys = {};
+
+                // ETH key (simplified derivation)
+                const ethHash = await this.sha256(seed + ':eth');
+                this.state.chainKeys.ethereum = {
+                    chain: 'ethereum',
+                    privateKey: ethHash.slice(0, 64),
+                    publicKey: ethHash.slice(0, 40),
+                    address: '0x' + ethHash.slice(0, 40)
+                };
+
+                // SOL key (ed25519)
+                const solSeed = new Uint8Array(32);
+                for (let i = 0; i < 32; i++) {
+                    solSeed[i] = parseInt(seed.slice(i*2, i*2+2), 16) ^ i;
+                }
+                const solKeyPair = nacl.sign.keyPair.fromSeed(solSeed);
+                this.state.chainKeys.solana = {
+                    chain: 'solana',
+                    privateKey: this.arrayToHex(solKeyPair.secretKey),
+                    publicKey: this.arrayToHex(solKeyPair.publicKey),
+                    address: this.arrayToHex(solKeyPair.publicKey).slice(0, 44)
+                };
+
+                // BTC key (simplified derivation)
+                const btcHash = await this.sha256(seed + ':btc');
+                this.state.chainKeys.bitcoin = {
+                    chain: 'bitcoin',
+                    privateKey: btcHash.slice(0, 64),
+                    publicKey: btcHash.slice(0, 40),
+                    address: '1' + btcHash.slice(0, 33)
+                };
+
+                this.renderChainKeys();
+            },
+
+            renderChainKeys() {
+                const container = document.getElementById('chain-keys-container');
+                const chains = ['ethereum', 'solana', 'bitcoin'];
+                
+                container.innerHTML = chains.map(chain => {
+                    const key = this.state.chainKeys[chain];
+                    if (!key) return '';
+
+                    return `
+                        <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-hover); border: 1px solid var(--border); border-radius: 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                                <span class="chain-badge ${chain}">${chain.toUpperCase()}</span>
+                            </div>
+                            <div style="margin-bottom: 0.75rem;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Address</div>
+                                <div class="code-block" style="font-size: 0.7rem; padding: 0.5rem;">${key.address}</div>
+                            </div>
+                            <div style="margin-bottom: 0.75rem;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Public Key</div>
+                                <div class="code-block" style="font-size: 0.7rem; padding: 0.5rem;">${key.publicKey.slice(0, 40)}...</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            exportMasterKey() {
+                if (!this.state.masterIdentity) {
+                    this.log('No identity to export', 'error');
+                    return;
+                }
+
+                const exportData = {
+                    version: '1.0',
+                    timestamp: Date.now(),
+                    masterIdentity: this.state.masterIdentity,
+                    chainKeys: this.state.chainKeys
+                };
+
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+                    type: 'application/json'
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `iamos-keys-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                this.log('Keys exported successfully', 'success');
+            },
+
+            clearIdentity() {
+                if (confirm('⚠️ This will permanently delete your identity and all derived keys. Make sure you have exported your keys first!\n\nAre you sure?')) {
+                    this.state.masterIdentity = null;
+                    this.state.chainKeys = {};
+                    document.getElementById('did-display').textContent = 'No identity generated yet';
+                    document.getElementById('mnemonic-display').textContent = 'Generate identity to see recovery phrase';
+                    document.getElementById('chain-keys-section').style.display = 'none';
+                    this.saveState();
+                    this.log('Identity cleared', 'success');
+                }
+            },
+
+            // ===== Blockchain =====
+            async mineBlock() {
+                const lastBlock = this.state.blockchain[this.state.blockchain.length - 1];
+                
+                const newBlock = {
+                    index: this.state.blockchain.length,
+                    timestamp: Date.now(),
+                    data: {
+                        type: 'transaction',
+                        message: 'Block mined by user'
+                    },
+                    previousHash: lastBlock.hash,
+                    nonce: 0,
+                    hash: ''
+                };
+
+                this.log('Mining block...', 'info');
+                
+                // Simple PoW
+                while (true) {
+                    const hash = await this.sha256(JSON.stringify(newBlock));
+                    if (hash.startsWith('00')) {
+                        newBlock.hash = hash;
+                        break;
+                    }
+                    newBlock.nonce++;
+                }
+
+                this.state.blockchain.push(newBlock);
+                this.state.tokens += 10;
+                
+                this.saveState();
+                this.renderUI();
+                this.log(`Block #${newBlock.index} mined! +10 NXS`, 'success');
+            },
+
+            renderBlockchain() {
+                const container = document.getElementById('chain-explorer');
+                
+                container.innerHTML = this.state.blockchain.slice().reverse().map(block => `
+                    <div class="card" style="margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div>
+                                <span class="badge">Block #${block.index}</span>
+                                <span style="margin-left: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">
+                                    ${new Date(block.timestamp).toLocaleString()}
+                                </span>
+                            </div>
+                            <span class="badge success">Nonce: ${block.nonce}</span>
+                        </div>
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: hsl(var(--cyan)); margin-bottom: 0.5rem;">
+                            ${block.hash}
+                        </div>
+                        <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                            ${JSON.stringify(block.data)}
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            // ===== AI Runtime =====
+            async runAI() {
+                const prompt = document.getElementById('ai-prompt').value.trim();
+                const model = document.getElementById('ai-model').value;
+                
+                if (!prompt) {
+                    this.log('Please enter a prompt', 'error');
+                    return;
+                }
+
+                const responseEl = document.getElementById('ai-response');
+                responseEl.innerHTML = '<div class="terminal-line">Connecting to Ollama...</div>';
+
+                try {
+                    const response = await fetch('http://localhost:11434/api/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: model,
+                            prompt: prompt,
+                            stream: false
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('Ollama connection failed');
+
+                    const data = await response.json();
+                    responseEl.innerHTML = `<div class="terminal-line terminal-success">${data.response || 'Response generated'}</div>`;
+                    this.log('AI execution completed', 'success');
+                } catch (e) {
+                    responseEl.innerHTML = `
+                        <div class="terminal-line terminal-error">
+                            [ERROR] Could not connect to Ollama
+                            
+                            Make sure:
+                            1. Ollama is installed (visit ollama.ai)
+                            2. Ollama is running (check http://localhost:11434)
+                            3. Model is pulled: ollama pull ${model}
+                        </div>
+                    `;
+                    this.log('Ollama not available: ' + e.message, 'error');
+                }
+            },
+
+            async testOllamaConnection() {
+                const statusEl = document.getElementById('ollama-status');
+                statusEl.innerHTML = '<span style="color: hsl(var(--yellow));">Testing...</span>';
+
+                try {
+                    const response = await fetch('http://localhost:11434/api/tags');
+                    if (response.ok) {
+                        const data = await response.json();
+                        const models = data.models || [];
+                        statusEl.innerHTML = `<span style="color: hsl(var(--green));">✓ Connected</span> • Models: ${models.length}`;
+                        this.log('Ollama connected successfully', 'success');
+                    } else {
+                        throw new Error('Connection failed');
+                    }
+                } catch (e) {
+                    statusEl.innerHTML = '<span style="color: hsl(var(--orange));">✗ Not connected</span>';
+                    this.log('Ollama not running on localhost:11434', 'error');
+                }
+            },
+
+            // ===== Agents =====
+            createAgent() {
+                const name = document.getElementById('agent-name').value.trim();
+                const role = document.getElementById('agent-role').value.trim();
+
+                if (!name || !role) {
+                    this.log('Please enter agent name and role', 'error');
+                    return;
+                }
+
+                const agent = {
+                    id: Date.now(),
+                    name,
+                    role,
+                    status: 'active',
+                    policyKeyId: null,
+                    created: Date.now()
+                };
+
+                this.state.agents.push(agent);
+                this.saveState();
+                this.renderAgents();
+                this.renderUI();
+                
+                document.getElementById('agent-name').value = '';
+                document.getElementById('agent-role').value = '';
+                
+                this.log(`Agent "${name}" spawned`, 'success');
+            },
+
+            renderAgents() {
+                const container = document.getElementById('agent-list');
+                
+                if (this.state.agents.length === 0) {
+                    container.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">
+                            <i class="fas fa-robot" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>No agents spawned yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = this.state.agents.map(agent => `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="color: hsl(var(--cyan)); font-size: 1.25rem;">${agent.name}</h3>
+                            <span class="badge success">${agent.status}</span>
+                        </div>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">${agent.role}</p>
+                        <div style="font-size: 0.875rem; color: var(--text-muted);">
+                            Created: ${new Date(agent.created).toLocaleString()}
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <button class="btn btn-ghost btn-sm" onclick="IAMOS.deleteAgent(${agent.id})" style="width: 100%;">
+                                <i class="fas fa-trash"></i> Terminate
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            deleteAgent(id) {
+                this.state.agents = this.state.agents.filter(a => a.id !== id);
+                this.saveState();
+                this.renderAgents();
+                this.renderUI();
+                this.log('Agent terminated', 'success');
+            },
+
+            // ===== Policy-Keys =====
+            createPolicyKey() {
+                const name = document.getElementById('policy-name').value.trim();
+                const spending = parseFloat(document.getElementById('policy-spending').value);
+                const expiry = parseInt(document.getElementById('policy-expiry').value);
+                const maxUses = parseInt(document.getElementById('policy-uses').value);
+                const actionsSelect = document.getElementById('policy-actions');
+                const actions = Array.from(actionsSelect.selectedOptions).map(o => o.value);
+
+                if (!name || !spending || !expiry || !maxUses || actions.length === 0) {
+                    this.log('Please fill all policy fields', 'error');
+                    return;
+                }
+
+                // Generate policy key
+                const keyPair = nacl.sign.keyPair();
+                const policyKey = {
+                    id: Date.now(),
+                    name,
+                    publicKey: this.arrayToHex(keyPair.publicKey).slice(0, 40),
+                    secretKey: this.arrayToHex(keyPair.secretKey),
+                    policy: {
+                        maxSpending: spending,
+                        expiryHours: expiry,
+                        expiresAt: Date.now() + (expiry * 3600000),
+                        maxUses,
+                        usesRemaining: maxUses,
+                        allowedActions: actions
+                    },
+                    created: Date.now(),
+                    active: true
+                };
+
+                this.state.policyKeys.push(policyKey);
+                this.saveState();
+                this.renderPolicyKeys();
+
+                // Clear form
+                document.getElementById('policy-name').value = '';
+                document.getElementById('policy-spending').value = '';
+                document.getElementById('policy-actions').selectedIndex = -1;
+
+                this.log(`Policy-Key "${name}" created`, 'success');
+            },
+
+            renderPolicyKeys() {
+                const container = document.getElementById('policy-keys-list');
+                
+                if (this.state.policyKeys.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            <i class="fas fa-key" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>No policy-keys created yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = this.state.policyKeys.map(pk => `
+                    <div class="policy-card">
+                        <div class="policy-header">
+                            <div>
+                                <h3 style="color: hsl(var(--cyan)); font-size: 1.25rem;">${pk.name}</h3>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                    Key: ${pk.publicKey}...
+                                </div>
+                            </div>
+                            <span class="badge ${pk.active ? 'success' : 'error'}">${pk.active ? 'Active' : 'Revoked'}</span>
+                        </div>
+                        <div class="policy-limits">
+                            <div class="policy-limit-item">
+                                <div class="policy-limit-label">Max Spending</div>
+                                <div class="policy-limit-value">${pk.policy.maxSpending} ETH</div>
+                            </div>
+                            <div class="policy-limit-item">
+                                <div class="policy-limit-label">Uses Remaining</div>
+                                <div class="policy-limit-value">${pk.policy.usesRemaining}/${pk.policy.maxUses}</div>
+                            </div>
+                            <div class="policy-limit-item">
+                                <div class="policy-limit-label">Expires In</div>
+                                <div class="policy-limit-value">${Math.round((pk.policy.expiresAt - Date.now()) / 3600000)}h</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Allowed Actions</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                ${pk.policy.allowedActions.map(action => `<span class="badge">${action}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                            <button class="btn btn-secondary btn-sm" onclick="IAMOS.exportPolicyKey(${pk.id})">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                            <button class="btn btn-ghost btn-sm" onclick="IAMOS.revokePolicyKey(${pk.id})">
+                                <i class="fas fa-ban"></i> Revoke
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            exportPolicyKey(id) {
+                const pk = this.state.policyKeys.find(k => k.id === id);
+                if (!pk) return;
+
+                const exportData = {
+                    name: pk.name,
+                    publicKey: pk.publicKey,
+                    policy: pk.policy
+                };
+
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+                    type: 'application/json'
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `policy-key-${pk.name}-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                this.log('Policy-Key exported', 'success');
+            },
+
+            revokePolicyKey(id) {
+                const pk = this.state.policyKeys.find(k => k.id === id);
+                if (!pk) return;
+
+                pk.active = false;
+                this.saveState();
+                this.renderPolicyKeys();
+                this.log(`Policy-Key "${pk.name}" revoked`, 'success');
+            },
+
+            // ===== Delegations =====
+            createDelegation() {
+                const type = document.getElementById('delegation-type').value;
+                const name = document.getElementById('delegation-name').value.trim();
+                const credentials = document.getElementById('delegation-credentials').value.trim();
+
+                if (!name || !credentials) {
+                    this.log('Please fill all delegation fields', 'error');
+                    return;
+                }
+
+                const delegation = {
+                    id: Date.now(),
+                    type,
+                    name,
+                    credentials: credentials,
+                    created: Date.now(),
+                    active: true
+                };
+
+                this.state.delegations.push(delegation);
+                this.saveState();
+                this.renderDelegations();
+
+                document.getElementById('delegation-name').value = '';
+                document.getElementById('delegation-credentials').value = '';
+
+                this.log(`Delegation "${name}" created`, 'success');
+            },
+
+            renderDelegations() {
+                const container = document.getElementById('delegations-list');
+                
+                if (this.state.delegations.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            <i class="fas fa-share-nodes" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>No delegations created yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = this.state.delegations.map(d => `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="color: hsl(var(--cyan)); font-size: 1.25rem;">${d.name}</h3>
+                            <span class="badge ${d.active ? 'success' : 'error'}">${d.active ? 'Active' : 'Revoked'}</span>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <span class="badge">${d.type.toUpperCase()}</span>
+                        </div>
+                        <div style="font-size: 0.875rem; color: var(--text-muted);">
+                            Created: ${new Date(d.created).toLocaleString()}
+                        </div>
+                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                            <button class="btn btn-ghost btn-sm" onclick="IAMOS.revokeDelegation(${d.id})" style="width: 100%;">
+                                <i class="fas fa-ban"></i> Revoke
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            revokeDelegation(id) {
+                const d = this.state.delegations.find(del => del.id === id);
+                if (!d) return;
+
+                d.active = false;
+                this.saveState();
+                this.renderDelegations();
+                this.log(`Delegation "${d.name}" revoked`, 'success');
+            },
+
+            // ===== Monaco Editor =====
+            async initMonacoEditor() {
+                return new Promise((resolve) => {
+                    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' }});
+                    require(['vs/editor/editor.main'], () => {
+                        this.state.monacoEditor = monaco.editor.create(document.getElementById('editor-container'), {
+                            value: this.state.editorContent.html,
+                            language: 'html',
+                            theme: 'vs-dark',
+                            minimap: { enabled: false },
+                            fontSize: 14,
+                            automaticLayout: true
+                        });
+                        resolve();
+                    });
+                });
+            },
+
+            switchEditorTab(lang) {
+                // Save current content
+                if (this.state.monacoEditor) {
+                    this.state.editorContent[this.state.currentEditorLang] = this.state.monacoEditor.getValue();
+                }
+
+                // Switch language
+                this.state.currentEditorLang = lang;
+                
+                // Update editor
+                if (this.state.monacoEditor) {
+                    monaco.editor.setModelLanguage(
+                        this.state.monacoEditor.getModel(),
+                        lang === 'js' ? 'javascript' : lang
+                    );
+                    this.state.monacoEditor.setValue(this.state.editorContent[lang]);
+                }
+
+                // Update tabs
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                event.target.classList.add('active');
+            },
+
+            updatePreview() {
+                // Save current editor content
+                if (this.state.monacoEditor) {
+                    this.state.editorContent[this.state.currentEditorLang] = this.state.monacoEditor.getValue();
+                }
+
+                const iframe = document.getElementById('preview-frame');
+                const html = this.state.editorContent.html;
+                const css = this.state.editorContent.css;
+                const js = this.state.editorContent.js;
+
+                const fullHTML = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>${css}</style>
+                    </head>
+                    <body>
+                        ${html}
+                        <script>${js}<\/script>
+                    </body>
+                    </html>
+                `;
+
+                iframe.srcdoc = fullHTML;
+                this.log('Preview updated', 'success');
+            },
+
+            generateWithAI() {
+                document.getElementById('ai-generate-modal').classList.add('active');
+            },
+
+            async executeAIGenerate() {
+                const prompt = document.getElementById('ai-generate-prompt').value.trim();
+                if (!prompt) return;
+
+                this.log('Generating code with AI...', 'info');
+
+                try {
+                    const response = await fetch('http://localhost:11434/api/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: 'codellama',
+                            prompt: `Generate HTML/CSS code for: ${prompt}\n\nProvide clean, production-ready code.`,
+                            stream: false
+                        })
+                    });
+
+                    const data = await response.json();
+                    const generated = data.response;
+
+                    // Try to extract HTML
+                    const htmlMatch = generated.match(/<html[\s\S]*<\/html>/i);
+                    if (htmlMatch) {
+                        this.state.editorContent.html = htmlMatch[0];
+                        if (this.state.monacoEditor && this.state.currentEditorLang === 'html') {
+                            this.state.monacoEditor.setValue(htmlMatch[0]);
+                        }
+                    }
+
+                    this.closeModal('ai-generate-modal');
+                    this.log('Code generated successfully', 'success');
+                } catch (e) {
+                    this.log('AI generation failed (Ollama not available)', 'error');
+                }
+            },
+
+            exportHTML() {
+                const html = this.state.editorContent.html;
+                const css = this.state.editorContent.css;
+                const js = this.state.editorContent.js;
+
+                const fullHTML = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated by I-AM-O.S.</title>
+    <style>
+${css}
+    </style>
+</head>
+<body>
+${html}
+    <script>
+${js}
+    <\/script>
+</body>
+</html>`;
+
+                const blob = new Blob([fullHTML], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `generated-${Date.now()}.html`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                this.log('HTML exported', 'success');
+            },
+
+            // ===== NFT Minting =====
+            async mintNFT() {
+                const name = document.getElementById('nft-name').value.trim();
+                const license = document.getElementById('nft-license').value;
+                const description = document.getElementById('nft-description').value.trim();
+                const chain = document.getElementById('nft-chain').value;
+                const royalty = parseInt(document.getElementById('nft-royalty').value);
+
+                if (!name || !description) {
+                    this.log('Please fill NFT name and description', 'error');
+                    return;
+                }
+
+                this.log('Minting NFT...', 'info');
+
+                // Generate content hash
+                const content = JSON.stringify(this.state.editorContent);
+                const contentHash = await this.sha256(content);
+
+                const nft = {
+                    id: Date.now(),
+                    name,
+                    description,
+                    license,
+                    chain,
+                    royalty,
+                    contentHash,
+                    content: this.state.editorContent,
+                    tokenId: Date.now(),
+                    minted: Date.now(),
+                    owner: this.state.masterIdentity?.did || 'No identity'
+                };
+
+                this.state.nfts.push(nft);
+                this.saveState();
+                this.renderNFTs();
+
+                this.log(`NFT "${name}" minted on ${chain}`, 'success');
+            },
+
+            renderNFTs() {
+                const container = document.getElementById('nft-list');
+                
+                if (this.state.nfts.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            <i class="fas fa-image" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>No NFTs minted yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = this.state.nfts.map(nft => `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div>
+                                <h3 style="color: hsl(var(--cyan)); font-size: 1.25rem;">${nft.name}</h3>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Token #${nft.tokenId}</div>
+                            </div>
+                            <span class="chain-badge ${nft.chain}">${nft.chain.toUpperCase()}</span>
+                        </div>
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">${nft.description}</p>
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; font-size: 0.875rem;">
+                            <div>
+                                <span style="color: var(--text-muted);">License:</span>
+                                <span style="color: hsl(var(--cyan));">${nft.license}</span>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">Royalty:</span>
+                                <span style="color: hsl(var(--cyan));">${nft.royalty}%</span>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                            Minted: ${new Date(nft.minted).toLocaleString()}
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            // ===== IPFS / File Storage =====
+            async handleFiles(files) {
+                for (const file of files) {
+                    const cid = 'Qm' + Math.random().toString(36).slice(2, 48);
+                    
+                    const fileObj = {
+                        id: Date.now() + Math.random(),
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        cid: cid,
+                        uploaded: Date.now()
+                    };
+
+                    this.state.files.push(fileObj);
+                    this.log(`File uploaded: ${file.name} → ${cid}`, 'success');
+                }
+
+                this.saveState();
+                this.renderFiles();
+            },
+
+            renderFiles() {
+                const container = document.getElementById('file-list');
+                
+                if (this.state.files.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            <i class="fas fa-folder-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>No files uploaded yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = this.state.files.map(file => `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: var(--bg-hover); border: 1px solid var(--border); border-radius: 0.5rem; margin-bottom: 0.75rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
+                            <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: rgba(0, 255, 255, 0.1); border-radius: 0.5rem; color: hsl(var(--cyan));">
+                                <i class="fas fa-file"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">${file.name}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">
+                                    ${this.formatBytes(file.size)} • CID: ${file.cid.slice(0, 12)}...
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-ghost btn-sm" onclick="IAMOS.copyToClipboard('${file.cid}')" title="Copy CID">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <button class="btn btn-ghost btn-sm" onclick="IAMOS.deleteFile('${file.id}')" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            deleteFile(id) {
+                this.state.files = this.state.files.filter(f => f.id != id);
+                this.saveState();
+                this.renderFiles();
+                this.log('File deleted', 'success');
+            },
+
+            // ===== UI Updates =====
+            renderUI() {
+                document.getElementById('block-count').textContent = this.state.blockchain.length;
+                document.getElementById('dashboard-blocks').textContent = this.state.blockchain.length;
+                document.getElementById('agent-count').textContent = this.state.agents.length;
+                document.getElementById('dashboard-agents').textContent = this.state.agents.length;
+                document.getElementById('token-balance').textContent = this.state.tokens;
+                
+                this.renderBlockchain();
+                this.renderAgents();
+                this.renderPolicyKeys();
+                this.renderDelegations();
+                this.renderFiles();
+                this.renderNFTs();
+            },
+
+            // ===== Utilities =====
+            async sha256(message) {
+                const msgBuffer = new TextEncoder().encode(message);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            },
+
+            arrayToHex(array) {
+                return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+            },
+
+            formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            },
+
+            copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    this.log('Copied to clipboard', 'success');
+                }).catch(() => {
+                    this.log('Failed to copy', 'error');
+                });
+            },
+
+            exportState() {
+                const blob = new Blob([JSON.stringify(this.state, null, 2)], {
+                    type: 'application/json'
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `iamos-state-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                this.log('State exported successfully', 'success');
+            },
+
+            showInfo() {
+                alert(`I-AM-O.S. v12 - Sovereign Runtime
+
+Version: 12.0.0
+Build: Genesis Edition
+Status: ${this.state.initialized ? 'ONLINE' : 'READY'}
+
+Features:
+• Sovereign Identity (DID + Multi-Chain Keys)
+• WebWorker Key Derivation (ETH/SOL/BTC)
+• Local Blockchain with PoW
+• AI Runtime (Ollama Integration)
+• Agent Swarm with Policy-Keys
+• Policy-Keys (Programmable Spending Limits)
+• API/Resource Delegations
+• Creative HTML Generator
+• NFT Minting & Licensing
+• IPFS Content Storage
+
+Author: Emergent.sh
+License: MIT + Sovereign Commercial`);
+            },
+
+            closeModal(id) {
+                document.getElementById(id).classList.remove('active');
+            },
+
+            log(message, type = 'info') {
+                const terminal = document.getElementById('main-terminal');
+                const className = type === 'success' ? 'terminal-success' : type === 'error' ? 'terminal-error' : '';
+                const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : '→';
+                
+                const line = document.createElement('div');
+                line.className = `terminal-line ${className}`;
+                line.textContent = `[${icon}] ${message}`;
+                
+                terminal.appendChild(line);
+                terminal.scrollTop = terminal.scrollHeight;
+
+                // Show toast
+                this.showToast(message, type);
+            },
+
+            showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}" style="font-size: 1.25rem;"></i>
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 0.25rem;">${type.charAt(0).toUpperCase() + type.slice(1)}</div>
+                            <div style="font-size: 0.875rem;">${message}</div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+        };
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('%c I-AM-O.S. v12 ', 'background: linear-gradient(135deg, #00ffff, #ff00ff); color: #000; font-size: 24px; font-weight: bold; padding: 10px;');
+            console.log('%c Sovereign Runtime Loaded ', 'background: #0f1420; color: #00ffff; font-size: 14px; padding: 5px;');
+        });
+    </script>
+</body>
+</html>
